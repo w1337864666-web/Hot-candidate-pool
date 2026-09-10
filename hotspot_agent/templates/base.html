@@ -1,0 +1,91 @@
+{% from "icons.html" import icon %}
+<!doctype html>
+<html lang="zh-CN" class="no-js" data-sidebar="collapsed">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}每日热点到候选内容池{% endblock %}</title>
+  <script>
+    document.documentElement.classList.remove("no-js");
+    document.documentElement.classList.add("js");
+    try {
+      if (window.innerWidth > 760 && localStorage.getItem("hotspot.sidebar.expanded") === "true") {
+        document.documentElement.dataset.sidebar = "expanded";
+      }
+    } catch (error) {}
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=21&rev=2">
+  <script defer src="{{ url_for('static', path='ui.js') }}?v=2&rev=3"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="app-sidebar" aria-label="内容工作台">
+      <div class="sidebar-header">
+        <a class="brand" href="/candidates" data-tooltip="热点内容 Agent">
+          <span class="brand-mark">{{ icon("logo", size=22) }}</span>
+          <span class="sidebar-copy brand-copy">热点内容 Agent</span>
+        </a>
+        <button class="icon-button sidebar-toggle desktop-sidebar-toggle" type="button" data-sidebar-toggle data-tooltip="展开或收起侧栏" aria-label="展开侧栏" aria-controls="app-sidebar" aria-expanded="false">
+          {{ icon("sidebar", size=19) }}
+        </button>
+      </div>
+
+      <p class="sidebar-label sidebar-copy">工作台</p>
+      <nav class="side-nav" aria-label="内容工作台导航">
+        {% for item in nav_items %}
+        <a class="side-link {% if active_nav == item.key %}active{% endif %}" href="{{ item.href }}" data-tooltip="{{ item.label }}" {% if active_nav == item.key %}aria-current="page"{% endif %}>
+          <span class="side-icon">{{ icon(item.key, size=19) }}</span>
+          <span class="sidebar-copy side-label">{{ item.label }}</span>
+          {% if item.count is not none %}<span class="nav-count">{{ item.count }}</span>{% endif %}
+        </a>
+        {% endfor %}
+      </nav>
+
+      <div class="sidebar-footer">
+        <a class="sidebar-api {% if active_nav == 'settings' %}active{% endif %}" href="/settings/api" data-tooltip="模型、数据与自动扫描" {% if active_nav == 'settings' %}aria-current="page"{% endif %}>
+          <span class="sidebar-api-icon">{{ icon("settings", size=19) }}</span>
+          <span class="sidebar-copy sidebar-api-copy"><small>模型、数据与调度</small><strong>{{ api_status_label }}</strong></span>
+          <span class="sidebar-copy">{{ icon("arrow-right", size=17) }}</span>
+        </a>
+        <p class="sidebar-note sidebar-copy">{{ api_status_note }}</p>
+      </div>
+    </aside>
+
+    <button class="sidebar-scrim" type="button" data-sidebar-dismiss aria-label="关闭导航"></button>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button mobile-menu-button" type="button" data-sidebar-toggle aria-label="打开导航" aria-controls="app-sidebar" aria-expanded="false">{{ icon("menu", size=21) }}</button>
+          <div>
+            <span class="topbar-kicker">CONTENT OPERATIONS</span>
+            <strong class="topbar-title">热点内容工作台</strong>
+          </div>
+        </div>
+        <a class="review-shortcut" href="/review/next" title="打开候选一中优先级最高的待人工终审热点" aria-label="人工终审工作区，候选一有 {{ pending_count }} 条待审核">
+          <span class="live-indicator" aria-hidden="true"></span>
+          <span class="review-shortcut-label">人工终审工作区</span>
+          <strong>{% if pending_count %}候选一 · {{ pending_count }} 条{% else %}候选一已清空{% endif %}</strong>
+          {{ icon("arrow-right", size=17) }}
+        </a>
+      </header>
+      <main class="page-content" id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
+    </div>
+  </div>
+  <div class="app-modal" data-app-modal hidden>
+    <div class="app-modal-backdrop" data-modal-close></div>
+    <section class="app-modal-panel" role="dialog" aria-modal="true" aria-labelledby="app-modal-title" aria-describedby="app-modal-description">
+      <div class="app-modal-header">
+        <h2 id="app-modal-title" data-modal-title>确认操作</h2>
+        <button class="icon-button app-modal-close" type="button" data-modal-close aria-label="关闭弹窗">{{ icon("close", size=18) }}</button>
+      </div>
+      <div class="app-modal-body" id="app-modal-description" data-modal-body></div>
+      <div class="app-modal-actions" data-modal-actions hidden>
+        <button class="secondary-button" type="button" data-modal-cancel>取消</button>
+        <button class="primary-button" type="button" data-modal-confirm>确认</button>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

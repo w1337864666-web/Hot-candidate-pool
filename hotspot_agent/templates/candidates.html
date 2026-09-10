@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% from "icons.html" import icon %}
+{% block title %}{{ page_title }} · 热点内容 Agent{% endblock %}
+{% block content %}
+<section class="page-heading dashboard-heading">
+  <div>
+    <p class="eyebrow">CONTENT QUEUE</p>
+    <h1>{{ page_title }}</h1>
+    <p class="muted">热点先由 AI 整理与初审，通过后进入候选一；人工终审后进入候选二。</p>
+  </div>
+  <div class="page-state"><span class="live-indicator" aria-hidden="true"></span><span>内容工作流就绪</span></div>
+</section>
+
+{% if scan_feedback %}
+<section class="scan-feedback scan-feedback-{{ scan_feedback.kind }}" role="status" aria-live="polite">
+  <span class="scan-feedback-icon">{{ icon(scan_feedback.icon, size=18) }}</span>
+  <div class="scan-feedback-body">
+    <strong>{{ scan_feedback.title }}</strong>
+    <p>{{ scan_feedback.message }}</p>
+    {% if scan_feedback.source_summary %}<small>来源状态：{{ scan_feedback.source_summary }}</small>{% endif %}
+  </div>
+  <a class="scan-feedback-link" href="/runs">查看运行记录 {{ icon("arrow-right", size=14) }}</a>
+</section>
+{% endif %}
+
+<section class="chat-agent-panel" data-chat-panel aria-labelledby="chat-agent-heading">
+  <div class="chat-agent-heading">
+    <div class="chat-agent-title">
+      <span class="chat-agent-icon">{{ icon("review", size=19) }}</span>
+      <div><p class="eyebrow">NATURAL LANGUAGE TASK</p><h2 id="chat-agent-heading">用一句话启动热点任务</h2></div>
+    </div>
+    <div class="chat-agent-controls">
+      <label class="chat-thought-toggle" title="切换执行进度展示">
+        <input type="checkbox" data-chat-thought-toggle>
+        <span>查看执行进度</span>
+      </label>
+      <button class="secondary-button chat-clear-button" type="button" data-chat-clear disabled>{{ icon("trash", size=15) }}<span>清空会话</span></button>
+      <span class="chat-agent-badge" data-chat-status aria-live="polite">等待输入</span>
+    </div>
+  </div>
+  <div class="chat-message-list" data-chat-messages aria-live="polite">
+    <div class="chat-message chat-message-assistant">
+      <span class="chat-message-role">Agent</span>
+      <p>告诉我需要关注什么热点、时间范围和结果形式。我会先整理执行计划，确认后再开始扫描。</p>
+    </div>
+  </div>
+  <ol class="chat-thought-list" data-chat-thoughts hidden aria-label="Agent 执行进度">
+    <li data-thought-step="parse"><span>01</span><strong>解析需求</strong><small>将自然语言整理为任务计划</small></li>
+    <li data-thought-step="sources"><span>02</span><strong>准备来源</strong><small>选择演示快照或真实来源</small></li>
+    <li data-thought-step="run"><span>03</span><strong>运行流水线</strong><small>采集、整理并执行审核门禁</small></li>
+    <li data-thought-step="result"><span>04</span><strong>整理结果</strong><small>写入候选池并保留运行记录</small></li>
+  </ol>
+  <div class="chat-plan" data-chat-plan hidden>
+    <div class="chat-plan-heading"><strong>执行计划</strong><small>确认后启动任务</small></div>
+    <dl class="chat-plan-grid">
+      <div><dt>需求</dt><dd data-plan-query></dd></div>
+      <div><dt>来源</dt><dd data-plan-source></dd></div>
+      <div><dt>时间范围</dt><dd data-plan-time></dd></div>
+      <div><dt>输出</dt><dd data-plan-output></dd></div>
+    </dl>
+    <div class="chat-plan-notice" data-plan-notice hidden></div>
+    <button class="primary-button" type="button" data-chat-confirm disabled>{{ icon("scan", size=17) }}<span>确认并执行</span></button>
+  </div>
+  <form class="chat-form" data-chat-form>
+    <label class="chat-input-label" for="chat-input">任务需求
+      <textarea id="chat-input" data-chat-input rows="2" maxlength="2000" placeholder="例如：抓取最近 24 小时 AI Agent 相关热点并生成候选"></textarea>
+    </label>
+    <div class="chat-form-footer">
+      <small>默认使用标注清楚的演示快照；真实来源模式可从原有扫描入口运行。</small>
+      <button class="primary-button" type="submit" data-pending-label="解析中">{{ icon("arrow-right", size=17) }}<span>解析需求</span></button>
+    </div>
+  </form>
+</section>
+
+<form class="scan-panel" action="/scan" method="post">
+
+  <div class="scan-panel-heading">
+    <span class="scan-panel-icon">{{ icon("scan", size=19) }}</span>
+    <div><small>NEW SCAN</small><strong>运行热点扫描</strong></div>
+  </div>
+  <div class="scan-primary">
+    <fieldset class="scan-field scan-mode">
+      <legend>输入方式</legend>
+      <div class="mode-options" role="radiogroup" aria-label="输入方式">
+        <label class="mode-option">
+          <input type="radio" name="mode" value="demo" checked>
+          <span><strong>演示快照</strong><small>离线快照</small></span>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="live">
+          <span title="TechCrunch AI、OpenAI News、Hacker News AI"><strong>海外来源</strong><small>3 个公开源</small></span>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="domestic">
+          <span title="36氪、少数派、IT之家"><strong>国内来源</strong><small>3 个公开源</small></span>
+        </label>
+      </div>
+    </fieldset>
+    <label class="scan-field">目标受众
+      <input name="audience" value="{{ profile_fields.audience }}">
+    </label>
+    <label class="scan-field scan-topics">关注主题
+      <textarea name="focus_topics" rows="1">{{ profile_fields.focus_topics }}</textarea>
+    </label>
+    <button class="primary-button scan-submit" type="submit" data-pending-label="正在扫描">
+      {{ icon("scan", size=18) }}<span>运行扫描</span>
+    </button>
+  </div>
+  <details class="scan-advanced">
+    <summary>{{ icon("settings", size=17) }}<span>更多设置</span>{{ icon("chevron-down", "summary-chevron", 16) }}</summary>
+    <div class="scan-advanced-grid">
+      <label class="scan-field">回避主题
+        <textarea name="avoid_topics" rows="2" placeholder="可选，例如：未经证实的融资传闻">{{ profile_fields.avoid_topics }}</textarea>
+      </label>
+      <label class="scan-field">内容语气
+        <input name="tone" value="{{ profile_fields.tone }}">
+      </label>
+      <label class="scan-field">补充定位说明
+        <textarea name="profile" rows="2">{{ profile_fields.free_text }}</textarea>
+      </label>
+    </div>
+  </details>
+</form>
+
+<section class="workflow-strip" aria-labelledby="workflow-heading">
+  <div class="workflow-title"><p class="eyebrow">DOUBLE REVIEW</p><h2 id="workflow-heading">双重审核流程</h2></div>
+  <div class="workflow-step workflow-step-input">
+    <span>01</span><div><strong>数据采集与整理</strong><small>{{ workflow_counts.all }} 条热点 · RSS / 数据 API</small></div>
+  </div>
+  <div class="workflow-connector" aria-hidden="true">{{ icon("arrow-right", size=18) }}</div>
+  <a class="workflow-step workflow-step-ai" href="/candidates?status=pending">
+    <span>02</span><div><strong>AI 初选 · 候选一</strong><small>{{ workflow_counts.pending }} 条待人工终审 · {{ workflow_counts.ai_filtered }} 条未通过</small></div>
+  </a>
+  <div class="workflow-connector" aria-hidden="true">{{ icon("arrow-right", size=18) }}</div>
+  <a class="workflow-step workflow-step-human" href="/candidates?status=final">
+    <span>03</span><div><strong>人工终审 · 候选二</strong><small>{{ workflow_counts.final }} 条最终候选</small></div>
+  </a>
+</section>
+
+{% if candidate_total %}
+<div class="section-heading">
+  <div><p class="eyebrow">{{ candidates|length }} ITEMS</p><h2>{{ page_title }}</h2></div>
+  <span class="section-meta">{{ icon("activity", size=16) }} 按最终优先级排序</span>
+</div>
+
+<nav class="origin-tabs" aria-label="候选来源分类">
+  {% for filter in origin_filters %}
+  <a class="origin-tab {% if active_origin == filter.key %}active{% endif %}" href="{{ filter.href }}" data-origin-tab="{{ filter.key }}" {% if active_origin == filter.key %}aria-current="page"{% endif %}>
+    <span>{{ filter.label }}</span><strong>{{ filter.count }}</strong>
+  </a>
+  {% endfor %}
+</nav>
+
+{% if candidate_groups %}
+{% for group in candidate_groups %}
+<section class="origin-group origin-group-{{ group.key }}" aria-labelledby="origin-heading-{{ group.key }}">
+  <div class="origin-group-heading">
+    <div><h3 id="origin-heading-{{ group.key }}">{{ group.label }}</h3><span>{{ group["items"]|length }} 条候选</span></div>
+    <small>组内按最终优先级排序</small>
+  </div>
+  <div class="table-wrap candidate-table-wrap">
+  <table class="candidate-table" aria-label="{{ group.label }}候选事件列表">
+    <thead><tr><th>优先级</th><th>AI 整理热点</th><th>来源分类</th><th>推荐判断</th><th>候选阶段</th><th>智能审核</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for item in group["items"] %}
+    <tr>
+      <td class="score-cell" data-label="优先级">
+        <div class="score-display"><strong>{{ item.priority_score }}</strong><span>/100</span></div>
+        <small class="score-label">{{ item.priority_label }}</small>
+        <small>基础 {{ item.base_score }} · 画像 {{ "%+d"|format(item.profile_adjustment) }} · 反馈 {{ "%+d"|format(item.feedback_adjustment) }} · 模型 {{ "%+d"|format(item.model_adjustment) }}</small>
+        <small>可信 {{ item.credibility_score }} · {% if item.heat_score %}热度 {{ item.heat_score }}{% else %}热度暂无{% endif %}</small>
+      </td>
+      <td class="event-cell" data-label="事件">
+        <a href="/candidates/{{ item.candidate_id }}">{{ item.title }}</a>
+        <small>{{ item.summary[:150] }}</small>
+        {% if '整理' in item.ai_status %}<span class="content-origin-note">{{ icon("sparkles", size=13) }} AI 整理，原始证据保留在详情页</span>{% endif %}
+      </td>
+      <td class="origin-cell" data-label="来源分类"><span class="origin-badge origin-{{ item.source_origin }}">{{ item.source_origin_label }}</span></td>
+      <td class="decision-cell" data-label="推荐判断"><strong class="recommendation recommendation-{{ 'yes' if item.recommendation == '推荐' else 'no' }}">{{ item.recommendation }}</strong><small>相关性 {{ item.relevance_score }}/100 · {{ item.follow_decision }}</small><small>{{ item.recommendation_reason }}</small></td>
+      <td class="status-cell" data-label="候选阶段"><span class="status status-{{ item.workflow_stage }}">{{ item.workflow_stage_label }}</span></td>
+      <td class="ai-cell" data-label="智能审核">
+        <span class="ai-review ai-review-{{ item.ai_review_status }}">{{ icon("shield", size=15) }}{{ item.ai_review_label }}</span>
+        {% if item.ai_review_confidence %}<small>置信度 {{ item.ai_review_confidence }}/100</small>{% endif %}
+      </td>
+      <td class="action-cell" data-label="操作">
+        <div class="action-stack">
+          <a class="table-action" data-detail-trigger href="/candidates/{{ item.candidate_id }}">{{ icon("eye", size=16) }}<span>{% if item.deleted_at %}查看{% elif item.workflow_stage == 'first' %}人工终审{% elif item.workflow_stage == 'ai_filtered' %}查看原因{% else %}查看详情{% endif %}</span></a>
+          {% if item.deleted_at %}
+          <form action="/candidates/{{ item.candidate_id }}/restore" method="post"><button class="table-action table-action-restore" type="submit" data-pending-label="恢复中">{{ icon("restore", size=16) }}<span>恢复</span></button></form>
+          {% elif item.status in ['approved', 'edited'] %}
+          <form action="/candidates/{{ item.candidate_id }}/delete" method="post" data-confirm-title="删除最终候选" data-confirm-message="确定删除这条最终候选吗？删除后可在“已删除”中恢复。"><button class="table-action table-action-danger" type="submit" data-pending-label="删除中">{{ icon("trash", size=16) }}<span>删除</span></button></form>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endfor %}
+{% else %}
+<div class="empty origin-empty">{{ icon("pending", "empty-icon", 28) }}<h2>当前分类没有热点</h2><p>可以切换来源分类，或查看其他审核阶段。</p></div>
+{% endif %}
+{% else %}
+<div class="empty">{{ icon("pending", "empty-icon", 28) }}<h2>还没有候选内容</h2><p>运行演示快照或选择海外、国内 RSS / Atom，即可查看完整审核流程。</p></div>
+{% endif %}
+{% endblock %}

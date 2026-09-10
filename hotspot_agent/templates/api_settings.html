@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "icons.html" import icon %}
+{% block title %}能力与调度配置 · 热点内容 Agent{% endblock %}
+{% block content %}
+<section class="page-heading dashboard-heading api-page-heading">
+  <div>
+    <p class="eyebrow">INTELLIGENCE SETTINGS</p>
+    <h1>模型、数据与自动扫描</h1>
+    <p class="muted">配置保存在本机数据库，密钥不会在页面中回显；每日调度按北京时间运行。</p>
+  </div>
+  <div class="page-state">{{ icon("settings", size=16) }}<span>本地配置</span></div>
+</section>
+
+{% if saved %}
+<div class="settings-saved" role="status">{{ icon("approved", size=18) }}<span>能力与调度配置已保存，将从下一次扫描或调度检查开始生效。</span></div>
+{% endif %}
+
+<form class="api-settings-form" action="/settings/api" method="post">
+  <section class="settings-band" aria-labelledby="model-settings-heading">
+    <div class="settings-band-heading">
+      <div><p class="eyebrow">MODEL API</p><h2 id="model-settings-heading">大模型能力</h2></div>
+      <span class="config-state {% if settings.model_key_configured %}configured{% endif %}">{% if settings.model_key_configured %}密钥已配置{% else %}未配置密钥{% endif %}</span>
+    </div>
+
+    <div class="settings-grid">
+      <label class="settings-field settings-field-wide">OpenAI 兼容 API 地址
+        <input type="url" name="model_base_url" value="{{ settings.model_base_url }}" placeholder="https://api.openai.com/v1" autocomplete="url">
+      </label>
+      <label class="settings-field">模型名称
+        <input name="model_name" value="{{ settings.model_name }}" required autocomplete="off">
+      </label>
+      <label class="settings-field">API Key
+        <input type="password" name="model_api_key" value="" placeholder="{% if settings.model_key_configured %}已配置，留空保持不变{% else %}sk-...{% endif %}" autocomplete="new-password">
+      </label>
+      <label class="settings-field settings-number">每轮智能处理数量
+        <input type="number" name="model_candidate_limit" min="1" max="20" step="1" value="{{ settings.model_candidate_limit }}">
+      </label>
+      <label class="settings-field settings-number">AI 审核最低置信度
+        <input type="number" name="model_review_threshold" min="50" max="95" step="1" value="{{ settings.model_review_threshold }}">
+      </label>
+    </div>
+
+    <div class="settings-toggles">
+      <label class="toggle-control"><input type="checkbox" name="model_enabled" {% if settings.model_enabled %}checked{% endif %}><span class="toggle-track" aria-hidden="true"></span><span><strong>启用大模型 API</strong><small>作为模型能力总开关</small></span></label>
+      <label class="toggle-control"><input type="checkbox" name="model_scoring_enabled" {% if settings.model_scoring_enabled %}checked{% endif %}><span class="toggle-track" aria-hidden="true"></span><span><strong>选题评分</strong><small>模型调整严格限制在 -10～+10</small></span></label>
+      <label class="toggle-control"><input type="checkbox" name="model_content_enabled" {% if settings.model_content_enabled %}checked{% endif %}><span class="toggle-track" aria-hidden="true"></span><span><strong>文案增强</strong><small>增强角度、英文文案和风险提示</small></span></label>
+      <label class="toggle-control"><input type="checkbox" name="model_review_enabled" {% if settings.model_review_enabled %}checked{% endif %}><span class="toggle-track" aria-hidden="true"></span><span><strong>智能审核</strong><small>通过门槛后进入候选一，再由人工终审</small></span></label>
+    </div>
+
+    {% if settings.model_key_configured %}
+    <label class="clear-secret"><input type="checkbox" name="clear_model_api_key"><span>删除已保存的模型 API Key</span></label>
+    {% endif %}
+  </section>
+
+  <section class="settings-band" aria-labelledby="data-settings-heading">
+    <div class="settings-band-heading">
+      <div><p class="eyebrow">DATA API</p><h2 id="data-settings-heading">补充数据检索</h2></div>
+      <span class="config-state {% if settings.data_key_configured %}configured{% endif %}">{% if settings.data_key_configured %}密钥已配置{% else %}未配置密钥{% endif %}</span>
+    </div>
+
+    <div class="settings-grid data-settings-grid">
+      <div class="provider-field"><small>数据服务</small><strong>Tavily Search</strong><span>新闻检索 · 最近一周 · 最多 10 条</span></div>
+      <label class="settings-field">Tavily API Key
+        <input type="password" name="data_api_key" value="" placeholder="{% if settings.data_key_configured %}已配置，留空保持不变{% else %}tvly-...{% endif %}" autocomplete="new-password">
+      </label>
+    </div>
+
+    <div class="settings-toggles settings-toggles-single">
+      <label class="toggle-control"><input type="checkbox" name="data_api_enabled" {% if settings.data_api_enabled %}checked{% endif %}><span class="toggle-track" aria-hidden="true"></span><span><strong>扫描时补充数据 API</strong><small>与 RSS 合并后进入同一去重、正文和评分流程</small></span></label>
+    </div>
+
+    {% if settings.data_key_configured %}
+    <label class="clear-secret"><input type="checkbox" name="clear_data_api_key"><span>删除已保存的 Tavily API Key</span></label>
+    {% endif %}
+  </section>
+
+  <section class="settings-band" aria-labelledby="schedule-settings-heading">
+    <div class="settings-band-heading">
+      <div><p class="eyebrow">DAILY SCHEDULE</p><h2 id="schedule-settings-heading">每日自动扫描</h2></div>
+      <span class="config-state {% if settings.schedule_enabled %}configured{% endif %}">{% if settings.schedule_enabled %}已启用{% else %}当前关闭{% endif %}</span>
+    </div>
+
+    <div class="settings-grid schedule-settings-grid">
+      <label class="settings-field">每日执行时间（北京时间）
+        <input type="time" name="schedule_time" value="{{ settings.schedule_time }}" required>
+      </label>
+      <label class="settings-field">自动扫描来源
+        <select name="schedule_mode">
+          <option value="live" {% if settings.schedule_mode == 'live' %}selected{% endif %}>海外 RSS / Atom</option>
+          <option value="domestic" {% if settings.schedule_mode == 'domestic' %}selected{% endif %}>国内 RSS / Atom</option>
+          <option value="demo" {% if settings.schedule_mode == 'demo' %}selected{% endif %}>演示快照</option>
+        </select>
+      </label>
+      <div class="provider-field"><small>执行频率</small><strong>每天一次</strong><span>同一计划时刻自动防重，并记录成功或失败结果</span></div>
+    </div>
+
+    <div class="settings-toggles settings-toggles-single">
+      <label class="toggle-control"><input type="checkbox" name="schedule_enabled" {% if settings.schedule_enabled %}checked{% endif %}><span class="toggle-track" aria-hidden="true"></span><span><strong>启用每日自动扫描</strong><small>应用运行期间到达设定时间后自动执行</small></span></label>
+    </div>
+  </section>
+
+  <div class="settings-actions">
+    <button class="primary-button" type="submit" data-pending-label="保存中">{{ icon("settings", size=17) }}<span>保存能力与调度配置</span></button>
+    <a class="secondary-button" href="/candidates">返回候选内容池</a>
+  </div>
+</form>
+{% endblock %}

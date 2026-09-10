@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "icons.html" import icon %}
+{% block title %}运行记录 · 热点内容 Agent{% endblock %}
+{% block content %}
+<section class="page-heading dashboard-heading">
+  <div>
+    <p class="eyebrow">RUN HISTORY</p>
+    <h1>运行记录</h1>
+    <p class="muted">手动与每日自动扫描都会保留来源状态；调度结果单独记录成功或失败。</p>
+  </div>
+  <div class="page-state">{{ icon("activity", size=16) }}<span>来源状态可追溯</span></div>
+</section>
+
+<div class="section-heading">
+  <div><p class="eyebrow">DAILY SCHEDULE</p><h2>自动扫描结果</h2></div>
+  <a class="section-meta" href="/settings/api">{{ icon("settings", size=16) }} 配置每日调度</a>
+</div>
+{% if scheduled_scans %}
+<div class="schedule-history" aria-label="自动扫描结果">
+  {% for item in scheduled_scans %}
+  <article class="schedule-result schedule-result-{{ item.status }}">
+    <span class="schedule-result-icon">{{ icon("approved" if item.status == "succeeded" else "warning" if item.status == "failed" else "clock", size=18) }}</span>
+    <div><strong>{% if item.status == "succeeded" %}执行成功{% elif item.status == "failed" %}执行失败{% else %}执行中{% endif %}</strong><small>{{ item.scheduled_for }} · {{ mode_text(item.mode) }}</small></div>
+    {% if item.status == "succeeded" %}<span>{{ item.item_count or 0 }} 条输入 · {{ item.candidate_count or 0 }} 条候选{% if item.fallback_used %} · 使用演示回退{% endif %}</span>{% elif item.error %}<span>{{ item.error }}</span>{% endif %}
+    {% if item.run_id %}<a href="#run-{{ item.run_id }}">查看运行 #{{ item.run_id }}</a>{% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty compact-empty"><p>尚无自动扫描结果；开启每日调度并到达设定时间后会在这里记录。</p></div>
+{% endif %}
+
+{% if runs %}
+<div class="section-heading">
+  <div><p class="eyebrow">{{ runs|length }} RUNS</p><h2>扫描历史</h2></div>
+  <span class="section-meta">{{ icon("clock", size=16) }} 最近运行优先</span>
+</div>
+<div class="table-wrap runs-table-wrap">
+  <table class="runs-table" aria-label="运行记录">
+    <thead><tr><th>编号</th><th>触发</th><th>模式</th><th>时间</th><th>来源健康</th><th>输入</th><th>候选</th><th>账号画像</th><th>错误与回退</th></tr></thead>
+    <tbody>
+    {% for run in runs %}
+    <tr id="run-{{ run.run_id }}">
+      <td data-label="编号"><strong>#{{ run.run_id }}</strong></td>
+      <td data-label="触发"><span class="trigger-badge trigger-{{ run.trigger_type }}">{% if run.trigger_type == 'scheduled' %}自动{% else %}手动{% endif %}</span></td>
+      <td data-label="模式"><span class="mode-badge">{{ mode_text(run.mode) }}</span></td>
+      <td data-label="时间">{{ run.started_at }}<small>{{ run.duration_ms }} ms</small></td>
+      <td data-label="来源健康">
+        <div class="run-sources">
+          {% for source in run.source_stats %}
+          <span class="source-health source-health-{{ source.status }}">
+            <span class="source-health-dot" aria-hidden="true"></span>
+            <span>{{ source.source_name }}：{{ source.status }}（成功 {{ source.success_count }} / 失败 {{ source.failure_count }}）{% if source.fallback_count %} · 回退 {{ source.fallback_count }}{% endif %}{% if source.attempts %} · {{ source.attempts }} 次{% endif %}{% if source.content_success_count or source.content_failure_count or source.content_skipped_count %}<br>正文可用 {{ source.content_success_count }} · 失败 {{ source.content_failure_count }} · 限额回退 {{ source.content_skipped_count }}{% endif %}</span>
+          </span>
+          {% endfor %}
+        </div>
+      </td>
+      <td data-label="输入"><strong>{{ run.item_count }}</strong></td>
+      <td data-label="候选"><strong>{{ run.candidate_count }}</strong></td>
+      <td data-label="账号画像">{% if run.profile.audience %}{{ run.profile.audience }}{% endif %}{% if run.profile.focus_topics %}<small>关注：{{ run.profile.focus_topics | join('、') }}</small>{% endif %}</td>
+      <td data-label="错误与回退" class="run-errors">
+        {% if run.fallback_used %}<strong class="fallback-label">{{ icon("warning", size=14) }} 已使用演示回退</strong>{% endif %}
+        {% if run.errors %}<details class="run-error-details"><summary>{{ run.errors|length }} 条错误详情</summary><div class="run-error-content">{{ run.errors | join('；') }}</div></details>{% else %}<span class="run-error-none">无</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">{{ icon("clock", "empty-icon", 28) }}<h2>还没有运行记录</h2><p>运行一次扫描后，这里会记录输入与候选数量。</p></div>
+{% endif %}
+{% endblock %}

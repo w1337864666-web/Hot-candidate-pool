@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% from "icons.html" import icon %}
+{% block title %}{{ candidate.title }} · 热点内容 Agent{% endblock %}
+{% block content %}
+{% set back_status = 'deleted' if candidate.deleted_at else 'final' if candidate.workflow_stage == 'final' else 'pending' if candidate.workflow_stage == 'first' else 'ai_filtered' if candidate.workflow_stage == 'ai_filtered' else 'rejected' %}
+<a class="back-link" href="/candidates?status={{ back_status }}">{{ icon("back", size=17) }}<span>返回{{ candidate.workflow_stage_label }}</span></a>
+
+<section class="detail-heading">
+  <p class="eyebrow">CONTENT REVIEW</p>
+  <div class="detail-title-row">
+    <h1>{{ candidate.title }}</h1>
+    <span class="status status-{{ candidate.workflow_stage }} detail-status">{{ candidate.workflow_stage_label }}</span>
+  </div>
+  <p class="detail-meta"><span class="origin-badge origin-{{ candidate.source_origin }}">{{ candidate.source_origin_label }}</span><span>{{ candidate.sources|length }} 个来源 · {{ candidate.priority_label }}</span></p>
+</section>
+
+<section class="review-pipeline" aria-label="双重审核状态">
+  <div class="review-pipeline-step {% if candidate.ai_review_status == 'passed' %}complete{% elif candidate.ai_review_status == 'fallback' %}fallback{% else %}blocked{% endif %}">
+    <span class="review-pipeline-icon">{{ icon("sparkles", size=18) }}</span>
+    <div><small>第一重 · AI 智能审核</small><strong>{{ candidate.ai_review_label }}</strong><p>{{ candidate.ai_review_reason or '暂无智能审核理由' }}</p></div>
+    {% if candidate.ai_review_confidence %}<b>{{ candidate.ai_review_confidence }}/100</b>{% endif %}
+  </div>
+  <div class="review-pipeline-arrow" aria-hidden="true">{{ icon("arrow-right", size=18) }}</div>
+  <div class="review-pipeline-step {% if candidate.workflow_stage == 'final' %}complete{% elif candidate.workflow_stage == 'rejected' %}blocked{% endif %}">
+    <span class="review-pipeline-icon">{{ icon("review", size=18) }}</span>
+    <div><small>第二重 · 人工终审</small><strong>{% if candidate.workflow_stage == 'final' %}已进入候选二{% elif candidate.workflow_stage == 'rejected' %}人工已驳回{% elif candidate.workflow_stage == 'first' %}等待人工审核{% else %}等待 AI 门禁{% endif %}</strong><p>人工负责事实核验、品牌语气和最终采用决定。</p></div>
+  </div>
+</section>
+
+<section class="decision-bar" aria-label="审核决策摘要">
+  <div class="metric-card metric-primary">
+    <span class="metric-icon">{{ icon("activity", size=19) }}</span>
+    <small>最终优先级</small><strong>{{ candidate.priority_score }}<span>/100</span></strong><p>{{ candidate.priority_label }}</p>
+  </div>
+  <div class="metric-card">
+    <span class="metric-icon">{{ icon("review", size=19) }}</span>
+    <small>账号跟进判断</small><strong>{{ candidate.recommendation }}</strong><p>相关性 {{ candidate.relevance_score }}/100 · {{ candidate.follow_decision }}</p>
+  </div>
+  <div class="metric-card">
+    <span class="metric-icon">{{ icon("shield", size=19) }}</span>
+    <small>内容质量</small><strong>{{ candidate.quality_score }}<span>/100</span></strong><p>完整度、时效性、来源可信度</p>
+  </div>
+  <div class="metric-card {% if candidate.risk_flags %}metric-warning{% endif %}">
+    <span class="metric-icon">{{ icon("warning", size=19) }}</span>
+    <small>风险</small><strong>{{ candidate.risk_flags|length }}<span> 项</span></strong><p>{% if candidate.risk_flags %}需要人工核验{% else %}未发现明显风险{% endif %}</p>
+  </div>
+</section>
+
+<details class="score-breakdown">
+  <summary><span>评分构成</span>{{ icon("chevron-down", "summary-chevron", 16) }}</summary>
+  <div class="score-breakdown-grid">
+    <div><small>基础分</small><strong>{{ candidate.base_score }}</strong><span>时效、主题、多源、热度、可信度</span></div>
+    <div><small>真实热度</small><strong>{{ candidate.heat_score }}</strong><span>{% if candidate.heat_score %}公开互动量标准化{% else %}暂无公开互动信号{% endif %}</span></div>
+    <div><small>来源可信度</small><strong>{{ candidate.credibility_score }}</strong><span>按不同来源计算并进入基础分</span></div>
+    <div><small>账号相关性</small><strong>{{ candidate.relevance_score }}</strong><span>{{ candidate.recommendation }} · 规则模拟，未调用模型</span></div>
+    <div><small>画像调整</small><strong>{{ "%+d"|format(candidate.profile_adjustment) }}</strong><span>关注/回避主题命中</span></div>
+    <div><small>反馈调整</small><strong>{{ "%+d"|format(candidate.feedback_adjustment) }}</strong><span>历史审核信号</span></div>
+    <div><small>模型调整</small><strong>{{ "%+d"|format(candidate.model_adjustment) }}</strong><span>{% if candidate.model_reason %}置信度 {{ candidate.model_confidence }}/100{% else %}未使用模型评估{% endif %}</span></div>
+  </div>
+  <p class="model-score-reason relevance-reason"><strong>推荐判断理由</strong><span>{{ candidate.recommendation_reason }}</span></p>
+  {% if candidate.model_reason %}<p class="model-score-reason"><strong>模型选题理由</strong><span>{{ candidate.model_reason }}</span></p>{% endif %}
+</details>
+
+<section class="ai-digest" aria-labelledby="ai-digest-heading">
+  <div class="ai-digest-heading"><span>{{ icon("sparkles", size=18) }}</span><div><p class="eyebrow">{% if '整理' in candidate.ai_status %}AI ORGANIZED{% else %}RULE ORGANIZED{% endif %}</p><h2 id="ai-digest-heading">{% if '整理' in candidate.ai_status %}AI 整理后的热点摘要{% else %}规则整理后的热点摘要{% endif %}</h2></div></div>
+  <h3>{{ candidate.title }}</h3>
+  <p>{{ candidate.summary }}</p>
+  {% if candidate.original_title != candidate.title or candidate.original_summary != candidate.summary %}
+  <details><summary>对照事件原始标题与聚合摘要</summary><div><strong>{{ candidate.original_title }}</strong><p>{{ candidate.original_summary }}</p></div></details>
+  {% endif %}
+</section>
+
+{% if candidate.risk_flags %}
+<section class="warning" aria-labelledby="risk-heading">
+  <span class="warning-icon">{{ icon("warning", size=20) }}</span>
+  <div><strong id="risk-heading">风险提示</strong><p>{{ candidate.risk_flags | join('；') }}</p></div>
+</section>
+{% endif %}
+
+<div class="detail-grid">
+  <section class="detail-main">
+    <div class="section-heading source-heading">
+      <div><p class="eyebrow">SOURCE REVIEW</p><h2>信息来源与正文</h2></div>
+      <span class="section-meta">{{ candidate.sources|length }} 个来源</span>
+    </div>
+    <div class="sources">
+      {% for source in candidate.sources %}
+      <details class="source-item" {% if loop.first %}open{% endif %}>
+        <summary>
+          <span class="source-index">{{ loop.index }}</span>
+          <span class="source-title"><strong>{{ source.title }}</strong><small>{{ source.source_name }} · {{ source.source_type }}</small></span>
+          <span class="source-quality">{{ source.content_status }} · 质量 {{ source.quality_score }}/100{% if source.engagement_points is not none or source.engagement_comments is not none %} · {{ source.engagement_points or 0 }} points / {{ source.engagement_comments or 0 }} comments{% endif %}</span>
+        </summary>
+        <div class="source-body">
+          <a class="source-link" href="{{ source.url }}" target="_blank" rel="noreferrer">打开原文 {{ icon("external", size=15) }}</a>
+          {% if source.summary %}<p class="source-summary">{{ source.summary }}</p>{% endif %}
+          {% if source.content %}<details class="source-content-details"><summary>查看正文片段</summary><p class="source-content">{{ source.content[:900] }}</p></details>{% endif %}
+          {% if source.content_error %}<small class="source-error">{{ source.content_error }}</small>{% endif %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+
+    <section class="history-section">
+      <div class="section-heading">
+        <div><p class="eyebrow">REVIEW HISTORY</p><h2>审核记录</h2></div>
+        <span class="section-meta">{{ icon("clock", size=16) }} {{ candidate.review_history|length }} 次</span>
+      </div>
+      {% if candidate.review_history %}
+      <div class="review-history">
+        {% for review in candidate.review_history %}
+        <article class="history-item">
+          <div class="history-meta"><span class="status status-{{ review.action }}">{{ status_text(review.action) }}</span><time>{{ review.created_at }}</time></div>
+          {% if review.note %}<p>{{ review.note }}</p>{% else %}<p class="muted">未填写审核意见</p>{% endif %}
+          <details><summary>查看当时英文文案</summary><p class="review-copy">{{ review.english_copy }}</p></details>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}<p class="empty-history">这条候选还没有审核记录。</p>{% endif %}
+    </section>
+  </section>
+
+  <section class="review-card">
+    <div class="review-card-header">
+      <div><p class="eyebrow">HUMAN REVIEW</p><h2>人工终审</h2></div>
+      <span class="status status-{{ candidate.workflow_stage }}">{{ candidate.workflow_stage_label }}</span>
+    </div>
+    <div class="content-angle"><small>{{ icon("sparkles", size=15) }} 内容角度</small><p>{{ candidate.content_angle }}</p></div>
+    {% if candidate.deleted_at %}
+    <div class="deleted-copy">{{ candidate.english_copy }}</div>
+    <form action="/candidates/{{ candidate.candidate_id }}/restore" method="post"><button class="primary-button" type="submit" data-pending-label="恢复中">{{ icon("restore", size=17) }}<span>恢复到已采用</span></button></form>
+    {% elif candidate.ai_review_status in ['passed', 'fallback'] or candidate.status != 'pending' %}
+    {% if candidate.ai_review_status == 'fallback' and candidate.status == 'pending' %}
+    <div class="review-fallback-note">{{ icon("warning", size=17) }}<span>本条由规则初筛兜底，尚未完成真实 AI 审核；人工终审时请加强事实核验。</span></div>
+    {% endif %}
+    {% set selected_status = candidate.status if candidate.status in ['approved', 'edited', 'rejected'] else 'approved' %}
+    <form action="/candidates/{{ candidate.candidate_id }}/review" method="post">
+      <label>英文候选文案<textarea name="english_copy" rows="12">{{ candidate.english_copy }}</textarea></label>
+      <fieldset class="review-status-group">
+        <legend>人工终审动作</legend>
+        <div class="segmented-control">
+          <label><input type="radio" name="status" value="approved" {% if selected_status == 'approved' %}checked{% endif %}><span>通过并进入候选二</span></label>
+          <label><input type="radio" name="status" value="edited" {% if selected_status == 'edited' %}checked{% endif %}><span>修改后进入候选二</span></label>
+          <label><input type="radio" name="status" value="rejected" {% if selected_status == 'rejected' %}checked{% endif %}><span>驳回</span></label>
+        </div>
+      </fieldset>
+      <label>审核意见<textarea name="note" rows="4" placeholder="填写通过、修改或驳回的原因"></textarea></label>
+      <div class="review-actions">
+        <button class="primary-button" type="submit" name="next_action" value="next" data-pending-label="保存中">{{ icon("arrow-right", size=17) }}<span>{% if candidate.status == 'pending' %}保存并审核下一条{% else %}更新并审核下一条{% endif %}</span></button>
+        <button class="secondary-button" type="submit" name="next_action" value="stay" data-pending-label="保存中"><span>仅保存</span></button>
+      </div>
+    </form>
+    {% if candidate.status in ['approved', 'edited'] %}
+    <form class="delete-form" action="/candidates/{{ candidate.candidate_id }}/delete" method="post" data-confirm-title="删除最终候选" data-confirm-message="确定删除这条最终候选吗？删除后可在“已删除”中恢复。"><button class="danger-button" type="submit" data-pending-label="删除中">{{ icon("trash", size=17) }}<span>从候选二删除</span></button></form>
+    {% endif %}
+    {% else %}
+    <div class="review-gate-blocked">
+      {{ icon("shield", size=22) }}
+      <strong>尚未进入候选一</strong>
+      <p>该热点未通过 AI 智能审核或本轮尚未评估，不能直接进入人工终审。可查看审核理由后在下一轮调整数据、画像或模型配置。</p>
+      <a class="secondary-button" href="/candidates?status=ai_filtered">返回 AI 未通过</a>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
