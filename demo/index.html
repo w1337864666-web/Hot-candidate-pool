@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="从热点发现到人工终审，体验每日热点候选内容池的完整工作流。免费交互演示。">
+  <title>候选内容池 · 交互演示</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">跳到内容</a>
+  <aside>
+    <a class="brand" href="#/candidates"><span class="mark">H</span><span>Hot Candidate Pool<small>热点到内容，有据可循</small></span></a>
+    <div class="nav-label">内容工作区</div>
+    <nav id="nav" aria-label="主导航"></nav>
+    <div class="side-bottom"><span class="dot"></span> 免费交互演示<p>操作仅保存在你的浏览器<br>无需账号，无需 API 密钥</p><button id="reset" class="quiet">↺ 重置演示</button></div>
+  </aside>
+  <div class="workspace">
+    <header><span>工作空间 <b>/</b> 演示项目</span><a href="#/settings">演示说明 ↗</a></header>
+    <div class="notice"><span>DEMO</span> 固定样例 · 规则模拟 · 非实时新闻 <small id="storage-note">更改自动保存在当前浏览器</small></div>
+    <main id="main" tabindex="-1"></main>
+    <footer>HOT CANDIDATE POOL <span>发现 → 整理 → 人工终审 → 候选内容</span></footer>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="reset-dialog"><h2>重新开始演示？</h2><p>将清除本浏览器中的审核、聊天和运行记录，恢复初始样例。</p><form method="dialog"><button value="cancel" class="secondary">取消</button><button value="reset">重置全部样例</button></form></dialog>
+  <noscript>此交互演示需要启用 JavaScript。完整 Python 应用可从 GitHub 仓库下载运行。</noscript>
+</body>
+</html>

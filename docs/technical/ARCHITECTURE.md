@@ -40,6 +40,14 @@
 
 ## Chat Demo Architecture
 
-聊天入口通过 POST /api/chat/messages 创建结构化任务计划，通过 POST /api/tasks/{task_id}/confirm 原子确认执行，并通过 GET /api/tasks/{task_id} 轮询状态。hotspot_agent/chat.py 负责 OpenAI 兼容模型解析和规则回退；hotspot_agent/chat_tasks.py 在独立线程中复用现有 un_scan；hotspot_agent/chat_store.py 使用同一 SQLite 文件保存会话、消息和任务状态。
+聊天入口通过 POST /api/chat/messages 创建结构化任务计划，通过 POST /api/tasks/{task_id}/confirm 原子确认执行，并通过 GET /api/tasks/{task_id} 轮询状态。hotspot_agent/chat.py 负责 OpenAI 兼容模型解析和规则回退；hotspot_agent/chat_tasks.py 在独立线程中复用现有 run_scan；hotspot_agent/chat_store.py 使用同一 SQLite 文件保存会话、消息和任务状态。
 
-聊天任务状态为 waiting_confirmation、queued、unning、succeeded、partial_success 和 ailed。模型失败时任务计划强制切换到 demo 来源并保留回退原因。聊天入口不改变确定性聚类、基础评分、规则风险和人工审核边界。
+聊天任务状态为 waiting_confirmation、queued、running、succeeded、partial_success 和 failed。模型失败时任务计划强制切换到 demo 来源并保留回退原因。聊天入口不改变确定性聚类、基础评分、规则风险和人工审核边界。
+
+## Static Cloudflare Demo
+
+`demo/` 独立提供 HTML、CSS 和原生 JavaScript，不依赖 Python 服务。界面沿用本地工作台配色和工作流；固定候选取材于 sources.demo_items，合并两条近似标题，明确展示样例评分及来源栏目入口。
+
+哈希路由处理候选列表、详情、运行记录和设置。版本化 localStorage 保存审核、文案、运行、聊天及待确认计划；不可用时使用内存。扫描按固定 ID 展示现有样例并记录本次操作，不重置审核和删除状态。
+
+Cloudflare Pages 使用 GitHub main 自动部署，root_dir=demo、build_command 为空、destination_dir=.；只发布 demo 内静态资源。无 Functions、D1 或模型绑定，CSP connect-src none 阻止后台网络调用。

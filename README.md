@@ -119,3 +119,10 @@ python -m unittest discover -s tests -v
 ## 聊天式 Demo 入口
 
 候选池顶部提供自然语言任务入口。用户输入“抓取最近 24 小时 AI Agent 相关热点并生成候选”等需求后，系统先展示来源、时间范围和输出类型计划；确认后在后台执行并轮询任务状态。默认使用标注清楚的演示快照，模型 API 未配置或调用失败时显示规则解析回退提示；原有扫描表单、真实来源模式和双重审核流程保持不变。
+## Cloudflare 免费在线演示
+
+`demo/` 是独立静态交互版：保留候选列表、来源/状态筛选、详情、人工审核、删除恢复、规则聊天计划确认和运行记录。所有样例来自固定快照，不采集实时新闻，不调用 AI 或执行每日任务。操作使用浏览器 localStorage 保存，访客互相隔离，可在设置中重置。存储不可用时回退到临时会话。
+
+Cloudflare Pages：连接此仓库的 `main`，Root directory 为 `demo`，Build command 留空，Build output directory 为 `.`。无需 npm、Python 构建、数据库或 API 密钥；更新 main 后自动发布。站点使用 `#/candidates` 等哈希路由，可直接分享和刷新。
+
+本地预览：`python -m http.server 8080 --directory demo`，打开 `http://localhost:8080`。完整 Python 应用仍按上文启动；在线版不会同步本地数据库。
